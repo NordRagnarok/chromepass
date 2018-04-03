@@ -137,7 +137,7 @@ def main():
 def getpath():
     try:
         # This is the Windows Path - assuming user running Windows
-        path_name = os.getenv('localappdata') + '\\Google\\Chrome\\User Data\\Default\\'
+        path_name = os.getenv('localappdata') + os.path.join('Google', 'Chrome', 'User Data', 'Default')
     except OSError as e:
         print(repr(e))
         path_name = ''
