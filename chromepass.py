@@ -16,12 +16,9 @@ except:
 
 def args_parser():
 
-    parser = argparse.ArgumentParser(
-        description="Retrieve Google Chrome Passwords")
-    parser.add_argument("-o", "--output", choices=['csv', 'json'],
-                        help="Output passwords to [ CSV | JSON ] format.")
-    parser.add_argument(
-        "-d", "--dump", help="Dump passwords to stdout. ", action="store_true")
+    parser = argparse.ArgumentParser(description="Retrieve Google Chrome Passwords")
+    parser.add_argument("-o", "--output", choices=['csv', 'json'],help="Output passwords to [ CSV | JSON ] format.")
+    parser.add_argument("-d", "--dump", help="Dump passwords to stdout. ", action="store_true")
 
     args = parser.parse_args()
     if args.dump:
