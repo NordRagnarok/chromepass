@@ -150,7 +150,7 @@ def getpath():
         path_name = os.getenv('HOME') + '/.config/google-chrome/Default/'
 
     if not os.path.isdir(path_name):
-        print('[!] Chrome Doesn\'t exists')
+        print("[!] Chrome Doesn't exists")
         sys.exit(0)
 
     return path_name
