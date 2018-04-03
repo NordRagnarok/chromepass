@@ -16,25 +16,26 @@ except:
 
 def args_parser():
 
+    output_mapping = {
+        'csv': output_csv,
+        'json': output_json
+    }
+
     parser = argparse.ArgumentParser(description="Retrieve Google Chrome Passwords")
-    parser.add_argument("-o", "--output", choices=['csv', 'json'],help="Output passwords to [ CSV | JSON ] format.")
+    parser.add_argument("-o", "--output", choices=['csv', 'json'], help="Output passwords to [ CSV | JSON ] format.")
     parser.add_argument("-d", "--dump", help="Dump passwords to stdout. ", action="store_true")
 
     args = parser.parse_args()
     if args.dump:
         for data in main():
             print(data)
-    if args.output == 'csv':
-        output_csv(main())
+    try:
+        output_mapping[args.output](main())
         return
 
-    if args.output == 'json':
-        output_json(main())
-        return
-
-    else:
+    except KeyError as e:
+        print(repr(e))
         parser.print_help()
-
 
 def main():
     info_list = []
